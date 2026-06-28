@@ -1,14 +1,10 @@
+import requests
 import json
-from ibm_watson import NaturalLanguageUnderstandingV1
-from ibm_cloud_sdk_core.authenticators import IAMAuthenticator
 
 def emotion_detector(text_to_analyse):
-    authenticator = IAMAuthenticator('YOUR_API_KEY')
-    nlu = NaturalLanguageUnderstandingV1(
-        version='2021-08-01',
-        authenticator=authenticator
-    )
-    nlu.set_service_url('YOUR_SERVICE_URL')
+    url = 'https://sn-watson-emotion.labs.skills.network/v1/watson.runtime.nlp.v1/NlpService/EmotionPredict'
+    headers = {"grpc-metadata-mm-model-id": "emotion_aggregated-workflow_lang_en_stock"}
+    input_data = { "raw_document": { "text": text_to_analyse } }
 
     if not text_to_analyse:
         return {
@@ -20,12 +16,19 @@ def emotion_detector(text_to_analyse):
             'dominant_emotion': None
         }
 
-    response = nlu.analyze(
-        text=text_to_analyse,
-        features={'emotion': {}}
-    ).get_result()
+    response = requests.post(url, headers=headers, json=input_data)
 
-    emotions = response['emotion']['document']['emotion']
+    if response.status_code == 400:
+        return {
+            'anger': None,
+            'disgust': None,
+            'fear': None,
+            'joy': None,
+            'sadness': None,
+            'dominant_emotion': None
+        }
+
+    emotions = response.json()['emotionPredictions'][0]['emotion']
     dominant_score = 0
     dominant = ''
     for emotion, score in emotions.items():

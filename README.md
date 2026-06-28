@@ -1,6 +1,6 @@
-# Cloud App with Database
+# Final Project
 
-This is a Django-based online course application that provides exam functionality for learners.
+This is the Final Project for the IBM AI Engineering course - an emotion detection application using Watson NLP.
 
 ## Features
 
