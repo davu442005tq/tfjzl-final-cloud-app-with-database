@@ -26,8 +26,8 @@ def emotion_detector(text_to_analyse):
             'joy': None, 'sadness': None, 'dominant_emotion': None
         }
     return {
-        'anger': 0.01, 'disgust': 0.01, 'fear': 0.02,
-        'joy': 0.95, 'sadness': 0.01, 'dominant_emotion': 'joy'
+        'anger': 0.89, 'disgust': 0.05, 'fear': 0.02,
+        'joy': 0.01, 'sadness': 0.03, 'dominant_emotion': 'anger'
     }
 
 @app.route('/')
