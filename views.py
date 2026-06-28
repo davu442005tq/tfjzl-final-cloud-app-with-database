@@ -2,42 +2,73 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 
-from .models import Question, Choice, Submission
+from .models import Course, Question, Choice, Submission
+
+
+def course_details(request, course_id):
+    course = get_object_or_404(Course, pk=course_id)
+    return render(request, 'onlinecourse/course_details_bootstrap.html', {'course': course})
 
 
 @login_required
-def submit(request, question_id):
-    question = get_object_or_404(Question, pk=question_id)
-    try:
-        selected_choice = question.choices.get(pk=request.POST['choice'])
-    except (KeyError, Choice.DoesNotExist):
-        messages.error(request, 'You did not select a valid choice.')
-        return redirect('detail', question_id=question.id)
-    else:
-        submission, created = Submission.objects.update_or_create(
-            question=question,
-            user=request.user,
-            defaults={'selected_choice': selected_choice}
-        )
-        selected_choice.votes += 1
-        selected_choice.save()
-        messages.success(request, 'Your answer has been recorded.')
-        return redirect('results', question_id=question.id)
+def exam(request, course_id):
+    course = get_object_or_404(Course, pk=course_id)
+    questions = course.questions.all()
+    return render(request, 'onlinecourse/exam.html', {
+        'course': course,
+        'questions': questions,
+    })
 
 
 @login_required
-def show_exam_result(request, question_id):
-    question = get_object_or_404(Question, pk=question_id)
-    try:
-        submission = Submission.objects.get(question=question, user=request.user)
-    except Submission.DoesNotExist:
-        messages.info(request, 'You have not submitted an answer for this question yet.')
-        return redirect('detail', question_id=question.id)
+def submit(request, course_id):
+    course = get_object_or_404(Course, pk=course_id)
+    questions = course.questions.all()
+    total = questions.count()
+    correct = 0
 
-    total_votes = sum(c.votes for c in question.choices.all())
-    context = {
-        'question': question,
-        'submission': submission,
-        'total_votes': total_votes,
-    }
-    return render(request, 'onlinecourse/results.html', context)
+    for question in questions:
+        choice_key = request.POST.get(f'choice_{question.id}')
+        if choice_key:
+            try:
+                selected = Choice.objects.get(pk=choice_key, question=question)
+                Submission.objects.update_or_create(
+                    question=question,
+                    user=request.user,
+                    defaults={'selected_choice': selected}
+                )
+                if selected.is_correct:
+                    correct += 1
+            except Choice.DoesNotExist:
+                continue
+
+    score = int((correct / total) * 100) if total > 0 else 0
+    passed = score >= 50
+
+    return render(request, 'onlinecourse/exam_result.html', {
+        'course': course,
+        'score': score,
+        'correct': correct,
+        'total': total,
+        'passed': passed,
+    })
+
+
+@login_required
+def show_exam_result(request, course_id):
+    course = get_object_or_404(Course, pk=course_id)
+    questions = course.questions.all()
+    submissions = Submission.objects.filter(user=request.user, question__course=course)
+    correct = sum(1 for s in submissions if s.selected_choice.is_correct)
+    total = questions.count()
+    score = int((correct / total) * 100) if total > 0 else 0
+    passed = score >= 50
+
+    return render(request, 'onlinecourse/exam_result.html', {
+        'course': course,
+        'score': score,
+        'correct': correct,
+        'total': total,
+        'passed': passed,
+        'submissions': submissions,
+    })
